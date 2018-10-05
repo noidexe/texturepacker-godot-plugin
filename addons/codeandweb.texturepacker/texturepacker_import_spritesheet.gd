@@ -76,11 +76,15 @@ func import(source_file, save_path, options, r_platform_variants, r_gen_files):
 	var sheets = read_sprite_sheet(source_file)
 	var sheetFolder = source_file.get_basename()+".sprites"
 	create_folder(sheetFolder)
-		
+	
+	var is_shoebox_tpsheet = false;
+	if sheets.has("meta") and sheets.meta.has("fixMargins"):
+		is_shoebox_tpsheet = sheets.meta.fixMargins
+	
 	for sheet in sheets.textures:
 		var sheetFile = source_file.get_base_dir()+"/"+sheet.image
 		var image = load_image(sheetFile, "ImageTexture", [])
-		create_atlas_textures(sheetFolder, sheet, image, r_gen_files)
+		create_atlas_textures(sheetFolder, sheet, image, r_gen_files, is_shoebox_tpsheet)
 
 	return ResourceSaver.save("%s.%s" % [save_path, get_save_extension()], Resource.new())
 	
@@ -92,19 +96,22 @@ func create_folder(folder):
 			printerr("Failed to create folder: " + folder)
 
 
-func create_atlas_textures(sheetFolder, sheet, image, r_gen_files):
+func create_atlas_textures(sheetFolder, sheet, image, r_gen_files, fix_margins = false):
 	for sprite in sheet.sprites:
-		if !create_atlas_texture(sheetFolder, sprite, image, r_gen_files):
+		if !create_atlas_texture(sheetFolder, sprite, image, r_gen_files, fix_margins):
 			return false
 	return true
 
 
-func create_atlas_texture(sheetFolder, sprite, image, r_gen_files):
+func create_atlas_texture(sheetFolder, sprite, image, r_gen_files, fix_margins = false):
 	var texture = AtlasTexture.new()
 	texture.atlas = image
 	var name = sheetFolder+"/"+sprite.filename.get_basename()+".tres"
 	texture.region = Rect2(sprite.region.x,sprite.region.y,sprite.region.w,sprite.region.h)
-	texture.margin = Rect2(sprite.margin.x, sprite.margin.y, sprite.margin.w, sprite.margin.h)
+	if fix_margins:
+		texture.margin = Rect2(sprite.margin.x, sprite.margin.y, sprite.margin.w - sprite.region.w, sprite.margin.h - sprite.region.h)
+	else:
+		texture.margin = Rect2(sprite.margin.x, sprite.margin.y, sprite.margin.w, sprite.margin.h)
 	r_gen_files.push_back(name)
 	return save_resource(name, texture)
 
